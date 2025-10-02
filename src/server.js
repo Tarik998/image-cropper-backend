@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const sharp = require('sharp');
+const { executeQuery } = require('./database');
 require('dotenv').config();
 
 const app = express();
