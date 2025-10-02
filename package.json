@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -10,10 +12,16 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@angular/cdk": "^20.2.7",
+    "@angular/material": "^20.2.7",
+    "@types/file-saver": "^2.0.7",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^5.1.0",
+    "file-saver": "^2.0.5",
     "multer": "^2.0.2",
-    "sharp": "^0.34.4",
-    "sqlite3": "^5.1.7"
+    "ngx-image-cropper": "^9.1.5",
+    "pg": "^8.16.3",
+    "sharp": "^0.34.4"
   }
 }
