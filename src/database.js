@@ -10,7 +10,6 @@ const pool = new Pool({
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
 });
 
-// Execute query
 async function executeQuery(query, params = []) {
   const client = await pool.connect();
   try {
@@ -25,20 +24,18 @@ async function initializeDatabase() {
   try {
     console.log('Initializing database...');
     
-    // Create tables if they don't exist
     await executeQuery(`
-      CREATE TABLE IF NOT EXISTS cropping_configs (
+     CREATE TABLE IF NOT EXISTS cropping_configs (
         id SERIAL PRIMARY KEY,
         logo_position VARCHAR(50) NOT NULL DEFAULT 'bottom-right',
         scale_down DECIMAL(5,3) NOT NULL DEFAULT 0.25,
+        logo_image TEXT,
         image_id INTEGER DEFAULT 1,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
-    console.log('Database ready');
-  } catch (error) {
+      } catch (error) {
     console.error('Database initialization failed:', error.message);
     throw error;
   }

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const sharp = require('sharp');
+const { executeQuery } = require('./database');
 require('dotenv').config();
 
 const app = express();
@@ -29,7 +30,7 @@ function getSharpGravity(position) {
   return gravityMap[position] || 'southeast';
 }
 
-// Get default/latest config
+// Get default config
 app.get('/api/config', async (req, res) => {
   const result = await executeQuery('SELECT * FROM cropping_configs ORDER BY created_at DESC LIMIT 1');
   if (result.rows.length > 0) {
@@ -127,12 +128,8 @@ app.delete('/api/config/:id', async (req, res) => {
   });
 });
 
-// Image cropping endpoint
 app.post('/api/crop', upload.single('image'), async (req, res) => {
   const { x, y, width, height, configId } = req.body;
-  
-  const configResult = await executeQuery('SELECT * FROM cropping_configs WHERE id = $1', [configId]);
-  const config = configResult.rows[0];
   
   let image = sharp(req.file.buffer).extract({
     left: parseInt(x),
@@ -141,18 +138,35 @@ app.post('/api/crop', upload.single('image'), async (req, res) => {
     height: parseInt(height)
   });
 
-  if (config.logo_image) {
-    const logoBuffer = Buffer.from(config.logo_image, 'base64');
-    
-    const metadata = await image.metadata();
-    const logoSize = Math.round(Math.min(metadata.width, metadata.height) * config.scale_down);
-    
-    const resizedLogo = await sharp(logoBuffer).resize(logoSize, logoSize, { fit: 'inside' }).toBuffer();
-    
-    image = image.composite([{
-      input: resizedLogo,
-      gravity: getSharpGravity(config.logo_position)
-    }]);
+  if (configId && configId !== 'null' && configId !== null && configId !== undefined) {
+    try {
+      const configResult = await executeQuery('SELECT * FROM cropping_configs WHERE id = $1', [configId]);
+      
+      if (configResult.rows.length > 0) {
+        const config = configResult.rows[0];
+        
+        if (config.logo_image) {
+          let logoBase64 = config.logo_image;
+          if (logoBase64.includes(',')) {
+            logoBase64 = logoBase64.split(',')[1];
+          }
+          
+          const logoBuffer = Buffer.from(logoBase64, 'base64');
+          
+          const metadata = await image.metadata();
+          const logoSize = Math.round(Math.min(metadata.width, metadata.height) * config.scale_down);
+          
+          const resizedLogo = await sharp(logoBuffer).resize(logoSize, logoSize, { fit: 'inside' }).toBuffer();
+          
+          image = image.composite([{
+            input: resizedLogo,
+            gravity: getSharpGravity(config.logo_position)
+          }]);
+        }
+      }
+    } catch (error) {
+      console.log(error.message);
+    }
   }
 
   const result = await image.jpeg({ quality: 90 }).toBuffer();
