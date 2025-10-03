@@ -118,12 +118,7 @@ app.delete('/api/config/:id', async (req, res) => {
   
   const result = await executeQuery('DELETE FROM cropping_configs WHERE id = $1 RETURNING *', [configId]);
   
-  if (result.rows.length === 0) {
-    return res.status(404).json({ error: 'Configuration not found' });
-  }
-  
   res.json({ 
-    message: 'Configuration deleted successfully',
     deletedConfig: result.rows[0]
   });
 });
