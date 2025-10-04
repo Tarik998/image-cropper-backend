@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const sharp = require('sharp');
-const { executeQuery } = require('./database');
+const { executeQuery, initializeDatabase } = require('./database');
 require('dotenv').config();
 
 const app = express();
@@ -169,6 +169,12 @@ app.post('/api/crop', upload.single('image'), async (req, res) => {
   res.send(result);
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Server running at http://0.0.0.0:${PORT}`);
+  try {
+    await initializeDatabase();
+    console.log('Database initialized successfully');
+  } catch (error) {
+    console.error('Database initialization failed:', error.message);
+  }
 });
