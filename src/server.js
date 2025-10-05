@@ -1,180 +1,158 @@
 const express = require('express');
 const cors = require('cors');
-const multer = require('multer');
-const sharp = require('sharp');
-const { executeQuery, initializeDatabase } = require('./database');
-require('dotenv').config();
+const path = require('path');
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+const { runMigrations } = require('../database/migrate');
+const configRoutes = require('./routes/config.routes');
+const imageRoutes = require('./routes/image.routes');
+const ErrorHandler = require('./utils/error-handler');
+
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// Swagger Configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Image Cropper API',
+      version: '1.0.0',
+      description: 'REST API for image cropping and logo overlay functionality with unified processing endpoint',
+      contact: {
+        name: 'API Support',
+        email: 'support@support.com'
+      }
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`,
+        description: 'Development server'
+      }
+    ],
+    components: {
+      schemas: {
+        CropConfig: {
+          type: 'object',
+          required: ['name', 'logo_position', 'logo_scale'],
+          properties: {
+            id: {
+              type: 'integer',
+              description: 'Unique identifier',
+              example: 1
+            },
+            name: {
+              type: 'string',
+              description: 'Configuration name',
+              example: 'My Logo Config'
+            },
+            logo_position: {
+              type: 'string',
+              enum: ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'center'],
+              description: 'Logo position on the image',
+              example: 'bottom-right'
+            },
+            logo_scale: {
+              type: 'number',
+              minimum: 0.01,
+              maximum: 0.25,
+              description: 'Logo scale factor (1% to 25%)',
+              example: 0.15
+            },
+            logo_image: {
+              type: 'string',
+              description: 'Base64 encoded logo image',
+              example: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
+            },
+            created_at: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp'
+            },
+            updated_at: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp'
+            }
+          }
+        },
+        ErrorResponse: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: false
+            },
+            error: {
+              type: 'string',
+              description: 'Error message describing what went wrong'
+            },
+            details: {
+              type: 'object',
+              description: 'Additional error details (optional)'
+            }
+          },
+          required: ['success', 'error']
+        },
+        SuccessResponse: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: true
+            },
+            data: {
+              type: 'object',
+              description: 'Response data'
+            }
+          },
+          required: ['success', 'data']
+        }
+      }
+    }
+  },
+  apis: ['./src/routes/*.js']
+};
 
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+// Middleware
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json({ limit: '20mb' }));
 
-const upload = multer({ 
-  limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    cb(null, file.mimetype.startsWith('image/'));
-  }
-});
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Image Cropper API Documentation'
+}));
 
-function getSharpGravity(position) {
-  const gravityMap = {
-    'top-left': 'northwest',
-    'top-right': 'northeast', 
-    'bottom-left': 'southwest',
-    'bottom-right': 'southeast',
-    'center': 'center'
-  };
-  return gravityMap[position] || 'southeast';
+// Routes
+app.use('/api', configRoutes);
+app.use('/api', imageRoutes);
+
+app.use(ErrorHandler.handleControllerError);
+
+async function startServer() {
+  try {
+    await runMigrations();
+    console.log('Database migrations completed successfully');
+    
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running at http://0.0.0.0:${PORT}`);
+      console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
+      console.log(`Server is ready to accept requests`);
+      
+      setInterval(() => {
+        console.log(`${new Date().toLocaleTimeString()} - Server is running`);
+      }, 100000);
+    });
+    
+  } catch (error) {
+    console.error('Database migration failed:', error.message);
+    process.exit(1);
+  }
 }
 
-// Get default config
-app.get('/api/config', async (req, res) => {
-  const result = await executeQuery('SELECT * FROM cropping_configs ORDER BY created_at DESC LIMIT 1');
-  if (result.rows.length > 0) {
-    res.json(result.rows[0]);
-  } else {
-    res.json({ 
-      logo_position: 'bottom-right', 
-      scale_down: 0.25,
-      logo_image: null 
-    });
-  }
-});
-
-// Get all configs
-app.get('/api/configs', async (req, res) => {
-  const result = await executeQuery('SELECT * FROM cropping_configs ORDER BY created_at DESC');
-  res.json(result.rows);
-});
-
-// Get specific config by ID
-app.get('/api/config/:id', async (req, res) => {
-  const configId = req.params.id;
-  const result = await executeQuery('SELECT * FROM cropping_configs WHERE id = $1', [configId]);
-  
-  if (result.rows.length === 0) {
-    return res.status(404).json({ error: 'Configuration not found' });
-  }
-  
-  res.json(result.rows[0]);
-});
-
-// Create/Update config
-app.post('/api/config', async (req, res) => {
-  const { id, logo_position, scale_down, logo_image } = req.body;
-  
-  if (!logo_position || !scale_down) {
-    return res.status(400).json({ error: 'Missing required fields: logo_position and scale_down' });
-  }
-
-  let query, params, result;
-
-  if (id) {
-    query = `
-      UPDATE cropping_configs 
-      SET logo_position = $2, scale_down = $3, logo_image = $4, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-      RETURNING *
-    `;
-    params = [id, logo_position, scale_down, logo_image];
-  } else {
-    const countResult = await executeQuery('SELECT COUNT(*) FROM cropping_configs');
-    const currentCount = parseInt(countResult.rows[0].count);
-    
-    if (currentCount >= 3) {
-      return res.status(400).json({ 
-        error: 'Maximum 3 configurations allowed. Delete an existing configuration first.' 
-      });
-    }
-
-    query = `
-      INSERT INTO cropping_configs (logo_position, scale_down, logo_image) 
-      VALUES ($1, $2, $3)
-      RETURNING *
-    `;
-    params = [logo_position, scale_down, logo_image];
-  }
-  
-  result = await executeQuery(query, params);
-  
-  if (result.rows.length === 0) {
-    return res.status(404).json({ error: 'Configuration not found for update' });
-  }
-  
-  res.json(result.rows[0]);
-});
-
-// Delete config
-app.delete('/api/config/:id', async (req, res) => {
-  const configId = req.params.id;
-  
-  const countResult = await executeQuery('SELECT COUNT(*) FROM cropping_configs');
-  if (parseInt(countResult.rows[0].count) <= 1) {
-    return res.status(400).json({ error: 'Cannot delete the last configuration' });
-  }
-  
-  const result = await executeQuery('DELETE FROM cropping_configs WHERE id = $1 RETURNING *', [configId]);
-  
-  res.json({ 
-    deletedConfig: result.rows[0]
-  });
-});
-
-app.post('/api/crop', upload.single('image'), async (req, res) => {
-  const { x, y, width, height, configId } = req.body;
-  
-  let image = sharp(req.file.buffer).extract({
-    left: parseInt(x),
-    top: parseInt(y), 
-    width: parseInt(width),
-    height: parseInt(height)
-  });
-
-  if (configId && configId !== 'null' && configId !== null && configId !== undefined) {
-    try {
-      const configResult = await executeQuery('SELECT * FROM cropping_configs WHERE id = $1', [configId]);
-      
-      if (configResult.rows.length > 0) {
-        const config = configResult.rows[0];
-        
-        if (config.logo_image) {
-          let logoBase64 = config.logo_image;
-          if (logoBase64.includes(',')) {
-            logoBase64 = logoBase64.split(',')[1];
-          }
-          
-          const logoBuffer = Buffer.from(logoBase64, 'base64');
-          
-          const metadata = await image.metadata();
-          const logoSize = Math.round(Math.min(metadata.width, metadata.height) * config.scale_down);
-          
-          const resizedLogo = await sharp(logoBuffer).resize(logoSize, logoSize, { fit: 'inside' }).toBuffer();
-          
-          image = image.composite([{
-            input: resizedLogo,
-            gravity: getSharpGravity(config.logo_position)
-          }]);
-        }
-      }
-    } catch (error) {
-      console.log(error.message);
-    }
-  }
-
-  const result = await image.jpeg({ quality: 90 }).toBuffer();
-  res.set('Content-Type', 'image/jpeg');
-  res.send(result);
-});
-
-app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`Server running at http://0.0.0.0:${PORT}`);
-  try {
-    await initializeDatabase();
-    console.log('Database initialized successfully');
-  } catch (error) {
-    console.error('Database initialization failed:', error.message);
-  }
-});
+startServer();
