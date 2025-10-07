@@ -6,7 +6,6 @@ COPY package*.json ./
 RUN npm ci --only=production --force
 
 COPY src/ ./src/
-COPY database/ ./database/
 
 EXPOSE 5001
 
