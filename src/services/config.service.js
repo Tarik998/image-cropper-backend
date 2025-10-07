@@ -1,5 +1,5 @@
 const configRepository = require('../repositories/config.repository');
-const ValidationUtils = require('../utils/validation');
+const { NotFoundError, ConflictError, ValidationError, DatabaseError } = require('../utils/errors');
 
 class ConfigService {
 
@@ -10,7 +10,7 @@ class ConfigService {
     try {
       return await configRepository.findAll();
     } catch (error) {
-      throw new Error(`Failed to retrieve configurations: ${error.message}`);
+      throw new DatabaseError(`Failed to retrieve configurations: ${error.message}`);
     }
   }
 
@@ -21,11 +21,14 @@ class ConfigService {
     try {
       const config = await configRepository.findById(id);
       if (!config) {
-        throw new Error(`Configuration with ID ${id} not found`);
+        throw new NotFoundError(`Configuration with ID ${id} not found`);
       }
       return config;
     } catch (error) {
-      throw new Error(`Failed to retrieve configuration: ${error.message}`);
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      throw new DatabaseError(`Failed to retrieve configuration: ${error.message}`);
     }
   }
 
@@ -48,7 +51,7 @@ class ConfigService {
         logo_image: null
       };
     } catch (error) {
-      throw new Error(`Failed to retrieve default configuration: ${error.message}`);
+      throw new DatabaseError(`Failed to retrieve default configuration: ${error.message}`);
     }
   }
 
@@ -59,14 +62,15 @@ class ConfigService {
     try {
       const count = await configRepository.count();
       if (count >= 3) {
-        throw new Error('Maximum of 3 configurations allowed. Delete an existing configuration first.');
+        throw new ConflictError('Maximum of 3 configurations allowed. Delete an existing configuration first.');
       }
-
-      ValidationUtils.validateConfigData(configData);
 
       return await configRepository.create(configData);
     } catch (error) {
-      throw new Error(`Failed to create configuration: ${error.message}`);
+      if (error instanceof ConflictError) {
+        throw error;
+      }
+      throw new DatabaseError(`Failed to create configuration: ${error.message}`);
     }
   }
 
@@ -77,19 +81,20 @@ class ConfigService {
     try {
       const existingConfig = await configRepository.findById(id);
       if (!existingConfig) {
-        throw new Error(`Configuration with ID ${id} not found`);
+        throw new NotFoundError(`Configuration with ID ${id} not found`);
       }
-
-      ValidationUtils.validateConfigData(configData);
 
       const updatedConfig = await configRepository.update(id, configData);
       if (!updatedConfig) {
-        throw new Error(`Configuration with ID ${id} not found`);
+        throw new NotFoundError(`Configuration with ID ${id} not found`);
       }
 
       return updatedConfig;
     } catch (error) {
-      throw new Error(`Failed to update configuration: ${error.message}`);
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      throw new DatabaseError(`Failed to update configuration: ${error.message}`);
     }
   }
 
@@ -100,17 +105,20 @@ class ConfigService {
     try {
       const existingConfig = await configRepository.findById(id);
       if (!existingConfig) {
-        throw new Error(`Configuration with ID ${id} not found`);
+        throw new NotFoundError(`Configuration with ID ${id} not found`);
       }
 
       const deleted = await configRepository.delete(id);
       if (!deleted) {
-        throw new Error(`Configuration with ID ${id} not found`);
+        throw new NotFoundError(`Configuration with ID ${id} not found`);
       }
 
       return true;
     } catch (error) {
-      throw new Error(`Failed to delete configuration: ${error.message}`);
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      throw new DatabaseError(`Failed to delete configuration: ${error.message}`);
     }
   }
 

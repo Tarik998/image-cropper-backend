@@ -3,10 +3,11 @@ const cors = require('cors');
 const path = require('path');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+require('express-async-errors');
 const { runMigrations } = require('../database/migrate');
 const configRoutes = require('./routes/config.routes');
 const imageRoutes = require('./routes/image.routes');
-const ErrorHandler = require('./utils/error-handler');
+const { globalErrorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
@@ -132,7 +133,11 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 app.use('/api', configRoutes);
 app.use('/api', imageRoutes);
 
-app.use(ErrorHandler.handleControllerError);
+// 404 handler for undefined routes
+app.use(notFoundHandler);
+
+// Global error handler
+app.use(globalErrorHandler);
 
 async function startServer() {
   try {

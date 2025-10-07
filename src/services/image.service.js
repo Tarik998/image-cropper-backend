@@ -1,15 +1,12 @@
 const path = require('path');
 const imageRepository = require('../repositories/image.repository');
 const configService = require('./config.service');
-const ValidationUtils = require('../utils/validation');
+const { ProcessingError, ValidationError } = require('../utils/errors');
 
 class ImageService {
 
   async processImage(imageFile, cropParams, configId = null, isHighQuality = false) {
     try {
-      ValidationUtils.validateImageFile(imageFile);
-      ValidationUtils.validateCropParams(cropParams);
-
       let config;
       if (configId) {
         config = await configService.getConfigurationById(configId);
@@ -31,7 +28,10 @@ class ImageService {
         originalFileName: imageFile.originalname
       };
     } catch (error) {
-      throw new Error(`Image processing failed: ${error.message}`);
+      if (error.statusCode) {
+        throw error;
+      }
+      throw new ProcessingError(`Image processing failed: ${error.message}`);
     }
   }
 

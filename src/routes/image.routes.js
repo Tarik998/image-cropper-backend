@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const ImageController = require('../controllers/image.controller');
+const { validateImageProcess, validateImageFile } = require('../middleware/validation');
 
 const router = express.Router();
 
@@ -107,6 +108,11 @@ const upload = multer({
  *               success: false
  *               error: "Image processing failed: Unsupported image format"
  */
-router.post('/image/process', upload.single('image'), ImageController.processImage);
+router.post('/image/process', 
+  upload.single('image'), 
+  validateImageFile,
+  validateImageProcess, 
+  ImageController.processImage
+);
 
 module.exports = router;

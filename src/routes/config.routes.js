@@ -1,5 +1,6 @@
 const express = require('express');
 const ConfigController = require('../controllers/config.controller');
+const { validateConfigData, validateId } = require('../middleware/validation');
 
 const router = express.Router();
 
@@ -90,7 +91,7 @@ router.get('/configs', ConfigController.getAll);
  *       500:
  *         description: Server error
  */
-router.post('/configs', ConfigController.create);
+router.post('/configs', validateConfigData, ConfigController.create);
 
 /**
  * @swagger
@@ -147,7 +148,7 @@ router.post('/configs', ConfigController.create);
  *       500:
  *         description: Server error
  */
-router.put('/configs/:id', ConfigController.update);
+router.put('/configs/:id', validateId, validateConfigData, ConfigController.update);
 
 /**
  * @swagger
@@ -184,6 +185,6 @@ router.put('/configs/:id', ConfigController.update);
  *       500:
  *         description: Server error
  */
-router.delete('/configs/:id', ConfigController.delete);
+router.delete('/configs/:id', validateId, ConfigController.delete);
 
 module.exports = router;

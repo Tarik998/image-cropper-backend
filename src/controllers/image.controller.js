@@ -1,23 +1,20 @@
 const imageService = require('../services/image.service');
-const ValidationUtils = require('../utils/validation');
-const ErrorHandler = require('../utils/error-handler');
+const { ProcessingError } = require('../utils/errors');
 
 class ImageController {
 
   /**
    * POST /api/image/process
    */
-  processImage = ErrorHandler.asyncHandler(async (req, res) => {
-    ValidationUtils.validateImageFile(req.file);
-    
+  async processImage(req, res) {
     const { x, y, width, height, configId, quality = 'preview' } = req.body;
     
-    const cropParams = ValidationUtils.validateCropParams({
+    const cropParams = {
       x: parseInt(x),
       y: parseInt(y), 
       width: parseInt(width),
       height: parseInt(height)
-    });
+    };
     
     const parsedConfigId = configId && configId !== 'null' && configId !== 'undefined' 
       ? parseInt(configId) 
@@ -48,7 +45,7 @@ class ImageController {
 
     res.set(headers);
     return res.send(imageBuffer);
-  });
+  }
 
 }
 
