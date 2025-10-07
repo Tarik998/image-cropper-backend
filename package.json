@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "start": "npm run migration:run && node src/server.js",
+    "dev": "npm run migration:run && nodemon src/server.js",
     "docs": "start http://localhost:5001/api-docs",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "migration:run": "node database/cli.js run",
-    "migration:status": "node database/cli.js status",
-    "migration:create": "node database/cli.js create"
+    "typeorm": "typeorm",
+    "migration:run": "npx typeorm migration:run -d src/database/index.js",
+    "migration:generate": "npx typeorm migration:generate -d src/database/index.js",
+    "migration:create": "npx typeorm migration:create src/migrations/NewMigration"
   },
   "keywords": [],
   "author": "",
@@ -19,13 +20,14 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^5.1.0",
-    "express-async-errors": "^3.1.1",
     "express-validator": "^7.2.0",
     "http-status": "^1.7.4",
     "multer": "^2.0.2",
     "pg": "^8.16.3",
+    "reflect-metadata": "^0.2.2",
     "sharp": "^0.34.4",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "typeorm": "^0.3.27"
   }
 }

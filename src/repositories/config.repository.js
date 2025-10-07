@@ -1,91 +1,57 @@
-const { executeQuery } = require('../services/database.service');
+const { AppDataSource } = require('../database');
+const ConfigEntity = require('../entities/Config');
 
 class ConfigRepository {
-  
   /**
-   * Get all configurations from database
+   * Get all configurations
    */
   async findAll() {
-    const query = 'SELECT * FROM configs ORDER BY created_at DESC';
-    const result = await executeQuery(query);
-    return result.rows;
+    const repo = AppDataSource.getRepository('Config');
+    return await repo.find({ order: { created_at: 'DESC' } });
   }
 
   /**
    * Find configuration by ID
    */
   async findById(id) {
-    const query = 'SELECT * FROM configs WHERE id = $1';
-    const result = await executeQuery(query, [id]);
-    return result.rows[0] || null;
+    const repo = AppDataSource.getRepository('Config');
+    return await repo.findOneBy({ id });
   }
-
-
 
   /**
    * Create new configuration
    */
   async create(configData) {
-    const {
-      name,
-      logo_position,
-      logo_scale,
-      logo_image
-    } = configData;
-
-    const query = `
-      INSERT INTO configs (name, logo_position, logo_scale, logo_image)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `;
-    
-    const values = [name, logo_position, logo_scale, logo_image];
-    const result = await executeQuery(query, values);
-    return result.rows[0];
+    const repo = AppDataSource.getRepository('Config');
+    const config = repo.create(configData);
+    return await repo.save(config);
   }
 
   /**
    * Update existing configuration
    */
   async update(id, configData) {
-    const {
-      name,
-      logo_position,
-      logo_scale,
-      logo_image
-    } = configData;
-
-    const query = `
-      UPDATE configs 
-      SET name = $1, logo_position = $2, logo_scale = $3, logo_image = $4, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5
-      RETURNING *
-    `;
-    
-    const values = [name, logo_position, logo_scale, logo_image, id];
-    const result = await executeQuery(query, values);
-    return result.rows[0] || null;
+    const repo = AppDataSource.getRepository('Config');
+    await repo.update(id, configData);
+    return await repo.findOneBy({ id });
   }
 
   /**
    * Delete configuration by ID
    */
   async delete(id) {
-    const query = 'DELETE FROM configs WHERE id = $1 RETURNING id';
-    const result = await executeQuery(query, [id]);
-    return result.rowCount > 0;
+    const repo = AppDataSource.getRepository('Config');
+    const result = await repo.delete(id);
+    return result.affected > 0;
   }
 
   /**
    * Count total configurations
    */
   async count() {
-    const query = 'SELECT COUNT(*) as count FROM configs';
-    const result = await executeQuery(query);
-    return parseInt(result.rows[0].count);
+    const repo = AppDataSource.getRepository('Config');
+    return await repo.count();
   }
-
-
 }
 
 module.exports = new ConfigRepository();

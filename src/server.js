@@ -3,13 +3,20 @@ const cors = require('cors');
 const path = require('path');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
-require('express-async-errors');
-const { runMigrations } = require('../database/migrate');
 const configRoutes = require('./routes/config.routes');
 const imageRoutes = require('./routes/image.routes');
 const { globalErrorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+const { AppDataSource } = require('./database');
+
+AppDataSource.initialize()
+  .then(() => {
+    console.log('TypeORM Data Source has been initialized!');
+  })
+  .catch((err) => {
+    console.error('TypeORM Data Source initialization error:', err);
+    process.exit(1);
+  });
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -140,10 +147,7 @@ app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
 async function startServer() {
-  try {
-    await runMigrations();
-    console.log('Database migrations completed successfully');
-    
+  try {    
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running at http://0.0.0.0:${PORT}`);
       console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
@@ -155,7 +159,6 @@ async function startServer() {
     });
     
   } catch (error) {
-    console.error('Database migration failed:', error.message);
     process.exit(1);
   }
 }

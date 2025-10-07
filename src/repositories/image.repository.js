@@ -23,12 +23,13 @@ class ImageRepository {
       if (logo_image && logo_image.trim()) {
         const logoBuffer = await this.loadLogoFromBase64(logo_image, width, height, logo_scale);
         const position = await this.calculateLogoPosition(logo_position, width, height, logoBuffer);
-        
-        imageProcessor = imageProcessor.composite([{
-          input: logoBuffer,
-          top: position.top,
-          left: position.left
-        }]);
+        imageProcessor = imageProcessor.composite([
+          {
+            input: logoBuffer,
+            top: position.top,
+            left: position.left
+          }
+        ]);
       }
 
       if (isHighQuality) {
