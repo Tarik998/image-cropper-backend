@@ -17,6 +17,23 @@ cd image-cropper-backend
 npm install
 ```
 
+### Environment Setup
+Create a `.env` file in the root directory:
+```env
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=image_cropper_db
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_SSL=false
+
+# Server Configuration
+PORT=5001
+NODE_ENV=development
+CORS_ORIGIN=http://localhost:4200
+```
+
 ## Development
 
 ### Method 1: With Local PostgreSQL
@@ -24,6 +41,9 @@ npm install
 # Make sure PostgreSQL is running
 # Create database: image_cropper_db
 createdb image_cropper_db
+
+# Run the schema
+psql image_cropper_db < database/schema.sql
 
 # Start the server
 npm start
@@ -70,6 +90,7 @@ npm run migration:run   # Apply all migrations from scratch
 ## API Endpoints
 
 ```bash
+GET    /api/config           # Get default configuration
 GET    /api/configs          # Get all configurations
 GET    /api/config/:id       # Get specific configuration
 POST   /api/config          # Create/update configuration
