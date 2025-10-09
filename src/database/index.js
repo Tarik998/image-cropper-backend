@@ -10,8 +10,7 @@ const AppDataSource = new DataSource({
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'image_cropper',
-  synchronize: process.env.NODE_ENV !== 'production', // Auto-sync in dev, use migrations in prod
-  logging: process.env.NODE_ENV === 'development',
+  synchronize: true, // Set to true for dev, false for prod
   entities: [ConfigEntity],
 });
 
