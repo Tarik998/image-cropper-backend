@@ -34,10 +34,20 @@ const validateImageProcess = [
     .isInt({ min: 1 })
     .withMessage('Height must be a positive integer'),
   
-  body('configId')
+    body('configId')
     .optional()
-    .isInt({ min: 1 })
-    .withMessage('Config ID must be a positive integer'),
+    .custom((value) => {
+      if (value === null || value === undefined || value === '' || value === 'null' || value === 'undefined') {
+        return true;
+      }
+      if (typeof value === 'string' && !isNaN(parseInt(value))) {
+        if (parseInt(value) >= 1) return true;
+      }
+      if (typeof value === 'number' && value >= 1) {
+        return true;
+      }
+      throw new Error('Config ID must be a positive integer or omitted');
+    }),
   
   body('quality')
     .optional()
